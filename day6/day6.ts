@@ -2,7 +2,7 @@ class Point {
   x: number
   y: number
 
-  constructor(x, y) {
+  constructor(x: number, y: number) {
     this.x = x
     this.y = y
   }
@@ -65,8 +65,8 @@ const day6Part1 = async (file: string) => {
   const data = await Deno.readTextFile(file)
 
   const lines: string[] = data.split("\n").filter((line: string) => line !== "")
-  let guard = new Point(0, 0)
-  let guardFacing = Facing.Up
+  let guardOriginal = new Point(0, 0)
+  let guardFacingOriginal = Facing.Up
 
   const map = lines.reduce((acc, l, j) => {
     l.split("").forEach((c, i) => {
@@ -80,29 +80,32 @@ const day6Part1 = async (file: string) => {
           break
         case "^":
           type = "empty"
-          guardFacing = Facing.Up
-          guard = new Point(i, j)
+          guardFacingOriginal = Facing.Up
+          guardOriginal = new Point(i, j)
           break
         case "v":
           type = "empty"
-          guardFacing = Facing.Down
-          guard = new Point(i, j)
+          guardFacingOriginal = Facing.Down
+          guardOriginal = new Point(i, j)
           break
         case "<":
           type = "empty"
-          guardFacing = Facing.Left
-          guard = new Point(i, j)
+          guardFacingOriginal = Facing.Left
+          guardOriginal = new Point(i, j)
           break
         case ">":
           type = "empty"
-          guardFacing = Facing.Right
-          guard = new Point(i, j)
+          guardFacingOriginal = Facing.Right
+          guardOriginal = new Point(i, j)
           break
       }
       acc.set(new Point(i, j).key(), type)
     })
     return acc
   }, new Map<string, string>())
+
+  let guard = new Point(guardOriginal.x, guardOriginal.y)
+  let guardFacing: Facing = guardFacingOriginal
 
   const xs = new Set<string>()
   xs.add(guard.key())
@@ -115,7 +118,7 @@ const day6Part1 = async (file: string) => {
     xs.add(guard.key())
   }
 
-  return xs.size
+  return { xs, guardFacingOriginal, guardOriginal, map }
 }
 
 const turnIfNeeded = (
@@ -136,9 +139,45 @@ const turnIfNeeded = (
   return facing
 }
 
+const day6Part2 = (
+  xs: Set<string>,
+  guardOriginal: Point,
+  guardFacingOriginal: Facing,
+  map: Map<string, string>,
+) => {
+  const points = [...xs.values()]
+
+  return points.reduce((acc, point) => {
+    const newMap = new Map(map)
+    newMap.set(point, "obstacle")
+    let guard = new Point(guardOriginal.x, guardOriginal.y)
+    let guardFacing = guardFacingOriginal
+
+    const loopPoints = new Set<string>()
+
+    loopPoints.add(guard.key() + String(guardFacing))
+
+    while (true) {
+      guardFacing = turnIfNeeded(guard, guardFacing, newMap)
+      guard = guard.moveFacing(guardFacing)
+
+      if (!newMap.has(guard.key())) {
+        return acc
+      }
+      if (loopPoints.has(guard.key() + String(guardFacing))) return acc + 1
+
+      loopPoints.add(guard.key() + String(guardFacing))
+    }
+  }, 0)
+}
+
 const main = async () => {
-  const resultOne = await day6Part1("1.txt")
-  console.log(resultOne)
+  const { xs, guardOriginal, guardFacingOriginal, map } =
+    await day6Part1("1.txt")
+  console.log(xs.size)
+
+  const result = day6Part2(xs, guardOriginal, guardFacingOriginal, map)
+  console.log(result)
 }
 
 main()
